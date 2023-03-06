@@ -6,51 +6,13 @@
     Changes version 2022-03-XX
     * Prefixed all record functions with 'get'.
 -}
-module Parser (parse, Stmt) where
+module Parser (parse, Stmt, Expr) where
 import Tokens
+import Expr
+import Stmt
 import Data.Typeable ( typeOf )
 import Prelude hiding (and, or)
 import Data.Maybe (isJust, fromJust)
-
-data Expr = Literal {getLiteral :: Token }
-          | Unary {getUnaryOpr :: Token, getUnaryExpr :: Expr }
-          | Binary { getBinaryLeft :: Expr, getBinaryOpr :: Token, getBinaryRight :: Expr }
-          | Grouping { getGrpExpr :: Expr }
-          | Variable {getVar :: Token }
-          | Assign {getVarAssign :: Token, getAssignExpr :: Expr }
-data Stmt = ExprStmt {getExpr :: Expr }
-          | PrintStmt {getPrintExpr :: Expr }
-          | VarDeclStmt {getVarToken :: Token, getInitializer :: Maybe Expr }
-          | BlockStmt {getBlockStmts :: [Stmt]}
-          | IfStmt {getIfCondition :: Expr, getThenBranch :: Stmt, getElseBranch ::  Maybe Stmt }
-          | WhileStmt {getWhileCondition :: Expr, getWhileBody :: Stmt}
-instance Show Expr where
-    show (Literal token)
-        | tt == TRUE || tt == FALSE || tt == NIL = show $ getTokenLit token
-        | tt == STRING = "\"" ++ getTokenStr token ++ "\""
-        | tt == NUMBER = getLiteralVal literal 
-        | otherwise = getTokenStr token
-        where
-            literal = getTokenLit token
-            tt = getTokenType token
-    show (Unary opr expr) = "(" ++ getTokenStr opr ++ show expr ++ ")"
-    show (Binary left opr right) 
-        | getTokenType opr == AND = "(" ++ show left ++ " && " ++ show right ++ ")"
-        | getTokenType opr == OR = "(" ++ show left ++ " || " ++ show right ++ ")"
-        | otherwise = "(" ++ show left ++ " " ++ getTokenStr opr ++ " " ++ show right ++ ")"
-    show (Grouping expr)     = "(" ++ show expr ++ ")"
-    show (Assign token expr) = getTokenStr token ++ "=" ++ show expr
-    show (Variable token)    = getTokenStr token
-
-instance Show Stmt where
-    show (ExprStmt expr) = show expr ++ ";"
-    show (PrintStmt val) = "print " ++ show val ++ ";"
-    show (VarDeclStmt token Nothing) = "V DEC -> " ++ getTokenStr token ++ ";"
-    show (VarDeclStmt token init) = "V DEC -> " ++ getTokenStr token ++ "=" ++ show (fromJust init) ++ ";"
-    show (BlockStmt stmts) = "{" ++ concatMap show stmts ++ "}"
-    show (IfStmt condition thenB Nothing) = "if" ++ show condition ++ show thenB
-    show (IfStmt condition thenB elseB) = "if" ++ show condition ++ show thenB ++ " else " ++ show (fromJust elseB)
-    show (WhileStmt condition body) = "while " ++ show condition ++ show body
 
 -- Program is an alias for a list of statements.
 newtype Program = Program [Stmt]
@@ -330,26 +292,6 @@ check tokens tokenType = getTokenType (head tokens) == tokenType
 -- return True, else False.
 isAtEnd :: [Token] -> Bool
 isAtEnd tokens = getTokenType (head tokens) == EOF
-
-isVariable :: Expr -> Bool
-isVariable (Variable _) = True
-isVariable expr         = False
-
-getTokenType :: Token -> TokenType
-getTokenType (TOKEN tokenType _ _ _) = tokenType
-
-getTokenLit :: Token -> Tokens.Literal
-getTokenLit (TOKEN _ _ literal _) = literal
-
-getTokenLine :: Token -> Int
-getTokenLine (TOKEN _ _ _ line) = line
-
-getTokenStr :: Token -> String
-getTokenStr (TOKEN _ str _ _) = str
-
-getLiteralVal :: Literal -> String
-getLiteralVal (NUM val) = show val
-getLiteralVal literal   = show literal
 
 loxError :: [Char] -> Token -> error
 loxError message token = error ("LOX: " ++ message ++ " on line " ++ show (getTokenLine token) ++ " around " ++ show (getTokenStr token))
