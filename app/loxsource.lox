@@ -1,0 +1,57 @@
+var lox = 50;
+var exde = "str";
+var OMG = 1050;
+var lox = 20;
+if (statement)
+if (10) print "hello";
+else print "no thanks";
+//FAIL
+true and false;
+5*2;
+//func(2);
+//func(2)(3);
+if(a) 5*2; else 9;
+//{ 5; 7; 9;}
+
+// PASSING
+(2==3);
+var c = (2/7);
+23*5;
+2+3+5;
+5*2;
+-2;
+!true;
+var a = 5;
+var str = "hello";
+var falseee = false;
+var empty;
+
+if ( a < 5 )
+{
+    print g; 88;
+}
+    else
+{
+    if (false)
+    {
+        while (a=5) ide;
+    }
+}
+
+{
+    print "yo";
+}
+while (true) {
+    print "continuing...";
+}
+50 + OMG;
+{
+ID = 5 * 20 + 50 - (var_name + 10);
+another_block = 20;
+print "hello";
+}
+for (var i = 0; condition; i = i + 1) {
+    print "hello";
+}
+
+{}
