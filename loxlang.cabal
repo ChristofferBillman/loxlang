@@ -7,20 +7,19 @@ cabal-version: 1.12
 name:           loxlang
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/loxlang#readme>
-homepage:       https://github.com/githubuser/loxlang#readme
-bug-reports:    https://github.com/githubuser/loxlang/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2023 Author name here
+homepage:       https://github.com/christofferbillman/loxlang#readme
+bug-reports:    https://github.com/christofferbillman/loxlang/issues
+author:         Christoffer Billman
+maintainer:     christoffer.billman@gmail.com
+copyright:      2023 Christoffer Billman
 license:        BSD3
 build-type:     Simple
 extra-source-files:
     README.md
-    CHANGELOG.md
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/loxlang
+  location: https://github.com/christofferbillman/loxlang
 
 library
   exposed-modules:
@@ -38,9 +37,11 @@ library
 executable loxlang-exe
   main-is: Main.hs
   other-modules:
+      Expr
       Interpreter
       Parser
       Scanner
+      Stmt
       Tokens
       Paths_loxlang
   hs-source-dirs:
