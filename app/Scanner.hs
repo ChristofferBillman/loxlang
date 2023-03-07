@@ -8,6 +8,9 @@
     * String is included in tokens of 2-character lexemes (line 75).
     * Identifiers FLASE, TRUE and NIL are assigned literal
       FALSE_LIT, TRUE_LIT and NIL_LIT, respectivley, instead of NONE.
+
+    Changes version 2022-03-07:
+    * Identifiers can now start with '_'.
 -}
 module Scanner (scanTokens, loxError) where
 
@@ -62,7 +65,7 @@ scanTokensPrivate (x: xs) line
     -- If opening character of string literal is encoutred
     | x == '"' = string xs line
     | isDigit x = number (x:xs) line
-    | isAlpha x = identifierOrKeyword (x:xs) line
+    | isAlpha x || x == '_' = identifierOrKeyword (x:xs) line
     -- If none of the above match, the syntax is incorrect.
     | otherwise = loxError ("Unexpected character " ++ [x]) line
         where
@@ -143,12 +146,10 @@ identifierOrKeyword xs line = let
         "var"    -> partAppAddToken VAR
         "while"  -> partAppAddToken WHILE
         -- If lexeme does not match any keywords, it is an identifier.
-        _ -> identifier xs lexeme line 
+        _        -> identifier remainder lexeme line 
 
 identifier :: [Char] -> [Char] -> Int -> [Token]
-identifier xs lexeme line =
-    let remainder = drop (length lexeme) xs in
-        addToken remainder line lexeme (ID lexeme) IDENTIFIER
+identifier remainder lexeme line = addToken remainder line lexeme (ID lexeme) IDENTIFIER
 
 loxError :: [Char] -> Int -> [Token]
 loxError message line = error ("LOX: " ++ message ++ " on line " ++ show line)
