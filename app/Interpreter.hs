@@ -14,15 +14,22 @@ import Expr
 import Stmt
 import Tokens
 import Data.Maybe
+import Debug.Trace
 
-type Environment = [(String,Value)]
+data Environment = Environment [(String,Value)] (Maybe Environment) deriving (Show)
 
 data Value = StrVal {getStrVal :: String}
           | NumVal  {getNumVal :: Float}
           | NilVal
           | TrueVal
           | FalseVal
-        deriving (Show)
+
+instance Show Value where
+    show (StrVal str) = str
+    show (NumVal num) = show num
+    show NilVal     = "nil"
+    show TrueVal     = "true"
+    show FalseVal     = "false"
           
 instance Num Value where
   (+) (NumVal n1) (NumVal n2) = NumVal (n1+n2)
@@ -61,60 +68,87 @@ instance Eq Value where
 instance Fractional Value where
 (/) (NumVal n1) (NumVal n2) = NumVal (n1 Prelude./ n2)
 
-
 interpret :: [Stmt] -> [String]
-interpret = map show
+-- TODO: Fix problem where things are interpreted the wrong way around (reverse program is quick fix).
+interpret program = reverse $ executeProgram (program, Environment [] Nothing, [])
 
-execute :: Stmt -> String
-execute (ExprStmt expr)  = printResult $ evaluate expr
-execute (PrintStmt expr) = printResult $ evaluate expr
-execute (VarDeclStmt)    = printResult $ define
+executeProgram :: ([Stmt], Environment, [String]) -> [String]
+executeProgram (stmt:rest, env, out) 
+    | null rest = out'
+    | otherwise        = executeProgram (rest, env', out')
+    where
+        (env', out')   = execute (stmt, env, out)
+
+-- Executes a single statement, and returns the effects of its execution,
+-- i.e. a variable change (change in environment) or a printout.
+execute :: (Stmt, Environment, [String]) -> (Environment, [String])
+execute (ExprStmt expr, env, out) = (newEnv, out)
+    where
+        (value, newEnv) = evaluate (expr, env)
+
+execute (PrintStmt expr, env, out) = (newEnv, show value : out)
+    where
+        (value, newEnv) = evaluate (expr, env)
+
+execute (stmt@(VarDeclStmt{}), env, out) = (define (stmt, env), out)
 
 -- Takes a variable declaration statement, and an environment.
--- Adds the variable from the declration to the enivironment.
+-- Adds the variable from the declration to the environment.
 -- Returns the new environment.
-define :: Stmt -> Environment -> Environment
-define (VarDeclStmt token (Just initializer)) env = (getTokenStr token, evaluate initializer) : env 
-define (VarDeclStmt token Nothing) env            = (getTokenStr token, NilVal) : env
-define _ _ = error "Internal Error: Passed a statement that is not a variable declaration to define."
+define :: (Stmt, Environment) -> Environment
+-- Confusing, but this pattern match extracts the ID from the var decl.
+define (VarDeclStmt (TOKEN _ _ (ID id) _) (Just initializer), Environment current outer) = Environment (entry : current) outer
+    where
+        entry = (id, init)
+        (init, _) = evaluate (initializer, Environment current outer)
 
-evaluate :: Expr -> Value
-evaluate (Literal token) = toValFromLit $ getTokenLit token
-evaluate (Grouping expr) = evaluate expr
-evaluate (Unary opr expr)
+-- Confusing, but this pattern match extracts the ID from the var decl.
+define (VarDeclStmt (TOKEN _ _ (ID id) _) Nothing, Environment current outer) = Environment (entry : current) outer
+    where
+        entry = (id, NilVal)
+define _ = error "Internal Error: Passed a statement that is not a variable declaration to define."
+
+get :: String -> Environment -> Value
+get key (Environment current outer)
+    | null current && isNothing outer = loxError $ "Variable " ++ key ++ " not defined"
+    | isJust value                    = fromJust value
+    | isNothing outer                 = loxError $ "Variable " ++ key ++ " not defined"
+    | otherwise                       = get key (fromJust outer)
+        where
+            value = lookup key current
+
+evaluate :: (Expr, Environment) -> (Value, Environment)
+evaluate (Literal token,  env) = (toValFromLit $ getTokenLit token, env)
+evaluate (Grouping expr,  env) = evaluate (expr, env)
+evaluate (Unary opr expr, env)
     | tt == MINUS = if isNumeric right
-                    then -right
+                    then (-right, newEnv)
                     else loxError "Use of unary '-' operator on non-numeric value"
     | tt == BANG =  if isTruthy right
-                    then FalseVal
-                    else TrueVal
+                    then (FalseVal, newEnv)
+                    else (TrueVal , newEnv)
     where
-        right = evaluate expr
+        (right, newEnv) = evaluate (expr, env)
         tt = getTokenType opr
-
-evaluate (Binary left opr right)
-    | tt == MINUS         = leftVal - rightVal
-    | tt == SLASH         = leftVal Interpreter./ rightVal
-    | tt == STAR          = leftVal * rightVal
-    | tt == PLUS          = leftVal + rightVal
-    | tt == GREATER       = toVal (leftVal >  rightVal)
-    | tt == GREATER_EQUAL = toVal (leftVal >= rightVal)
-    | tt == LESS          = toVal (leftVal <  rightVal)
-    | tt == LESS_EQUAL    = toVal (leftVal <= rightVal)
-    | tt == BANG_EQUAL    = toVal (leftVal /= rightVal)
-    | tt == EQUAL_EQUAL   = toVal (leftVal == rightVal)
+evaluate (Binary left opr right, env)
+    | tt == MINUS         = (leftVal - rightVal, newEnv)
+    | tt == SLASH         = (leftVal Interpreter./ rightVal, newEnv)
+    | tt == STAR          = (leftVal * rightVal, newEnv)
+    | tt == PLUS          = (leftVal + rightVal, newEnv)
+    | tt == GREATER       = (toVal (leftVal >  rightVal), newEnv)
+    | tt == GREATER_EQUAL = (toVal (leftVal >= rightVal), newEnv)
+    | tt == LESS          = (toVal (leftVal <  rightVal), newEnv)
+    | tt == LESS_EQUAL    = (toVal (leftVal <= rightVal), newEnv)
+    | tt == BANG_EQUAL    = (toVal (leftVal /= rightVal), newEnv)
+    | tt == EQUAL_EQUAL   = (toVal (leftVal == rightVal), newEnv)
     where
         tt       = getTokenType opr
-        leftVal  = evaluate left
-        rightVal = evaluate right
+        (leftVal, leftEnv)  = evaluate (left, env)
+        (rightVal, newEnv) = evaluate (right, leftEnv)
+    
+-- TODO: Call get with literal instead of str.
+evaluate (Variable (TOKEN _ str _ _), env) = (get str env,env)
 evaluate _ = loxError "An unknown error occured while evaluating expression"
-
-printResult :: Value -> String
-printResult TrueVal  = "true"
-printResult FalseVal = "false"
-printResult NilVal   = "nil"
-printResult (NumVal val) = show val
-printResult (StrVal val) = show val
 
 -- Tells you whether or not a given Value is numeric or not.
 isNumeric :: Value -> Bool
