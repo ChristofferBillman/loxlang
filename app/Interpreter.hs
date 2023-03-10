@@ -14,6 +14,7 @@ import Expr
 import Stmt
 import Tokens
 import Data.Maybe
+import Debug.Trace
 
 data Environment = Environment [(String,Value)] (Maybe Environment) deriving (Show)
 
@@ -69,12 +70,14 @@ instance Fractional Value where
 
 interpret :: [Stmt] -> [String]
 -- TODO: Fix problem where things are interpreted the wrong way around (reverse is quick fix).
-interpret program = reverse $ executeProgram (program, Environment [] Nothing, [])
+-- Take out only the output string, not the environment.
+interpret program = reverse $ snd $ executeStatements (program, Environment [] Nothing, [])
 
-executeProgram :: ([Stmt], Environment, [String]) -> [String]
-executeProgram (stmt:rest, env, out) 
-    | null rest = out'
-    | otherwise        = executeProgram (rest, env', out')
+-- Recursivley 'loops' through a list of statements.
+executeStatements :: ([Stmt], Environment, [String]) -> (Environment, [String])
+executeStatements (stmt:rest, env, out) 
+    | null rest = (env', out')
+    | otherwise        = executeStatements (rest, env', out')
     where
         (env', out')   = execute (stmt, env, out)
 
@@ -90,6 +93,7 @@ execute (PrintStmt expr, env, out) = (newEnv, show value : out)
         (value, newEnv) = evaluate (expr, env)
 
 execute (stmt@(VarDeclStmt{}), env, out) = (define (stmt, env), out)
+execute (BlockStmt stmts, env, out) = block (stmts, env, out)
 
 -- Takes a variable declaration statement, and an environment.
 -- Adds the variable from the declration to the environment.
@@ -111,6 +115,7 @@ define _ = error "Internal Error: Passed a statement that is not a variable decl
 
 -- Looks a variable with a name exists, if it does it returns its value.
 -- Recursivley calls itself to search though all enclosing environments.
+-- This is where shadowing is implemtented.
 get :: String -> Environment -> Maybe Value
 get key (Environment current outer)
     | null current && isNothing outer = Nothing
@@ -121,11 +126,24 @@ get key (Environment current outer)
             value = lookup key current
 
 assign :: (String, Value) -> Environment -> Environment
-assign (name, value) (Environment current outer)
-    | isNothing result = loxError $ "Cannot assign value to undefined variable: " ++ name
-    | otherwise        = Environment ((name, fromJust result) : current) outer
+assign (key, value) (Environment current outer)
+    | null current && isNothing outer = loxError $ "Cannot assign undefined variable " ++ key 
+    -- Assignment target found.
+    | isJust result    = Environment ((key, value) : current) outer
+    | isNothing outer  = loxError $ "Cannot assign undefined variable " ++ key 
+    -- Keep looking up.
+    -- Rewrap with the enclosing environment as recursion pops up the call stack.
+    | otherwise        = Environment current (Just (assign (key, value) (fromJust outer)))
     where
-        result = get name (Environment current outer)
+        result = lookup key current
+
+block :: ([Stmt], Environment, [String]) -> (Environment,[String])
+-- Execute the statements inside block within a new environment, inside the previous one.
+-- Then when execution is completed, throw away all variables in the innermost block environment.
+-- Return the restored environment and generated output.
+block (stmts, env, out) = (fromJust outer, newOut)
+    where
+        (Environment current outer, newOut) = executeStatements (stmts, Environment [] (Just env), out)
 
 evaluate :: (Expr, Environment) -> (Value, Environment)
 evaluate (Literal token,  env) = (toValFromLit $ getTokenLit token, env)
