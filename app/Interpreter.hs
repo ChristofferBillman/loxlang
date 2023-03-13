@@ -7,6 +7,7 @@
 {-
     TODO:
     * Report what line an error occured on.
+    * Maybe functions
 -}
 module Interpreter (interpret) where
 
@@ -93,7 +94,26 @@ execute (PrintStmt expr, env, out) = (newEnv, show value : out)
         (value, newEnv) = evaluate (expr, env)
 
 execute (stmt@(VarDeclStmt{}), env, out) = (define (stmt, env), out)
-execute (BlockStmt stmts, env, out) = block (stmts, env, out)
+execute (BlockStmt stmts, env, out)      = block (stmts, env, out)
+execute (stmt@(IfStmt{}), env, out)      = ifStatement (stmt, env, out)
+execute (stmt@(WhileStmt{}), env, out)   = whileStatement (stmt, env, out)
+execute _                                = loxError "Unknown error occured while executing statement."
+
+ifStatement :: (Stmt, Environment, [String]) -> (Environment, [String])
+ifStatement (IfStmt condition thenBranch elseBranch, env, out)
+    | isTruthy runThen  = execute (thenBranch, newEnv, out)
+    | isJust elseBranch = execute (fromJust elseBranch, newEnv, out)
+    | otherwise         = (env, out)
+    where
+        (runThen, newEnv) = evaluate (condition, env)
+
+whileStatement :: (Stmt, Environment, [String]) -> (Environment, [String])
+whileStatement (whileStmt@(WhileStmt condition (BlockStmt stmts)), env, out)
+    | isTruthy conditionValue = whileStatement (whileStmt, env', out')
+    | otherwise               = (env, out)
+    where
+        (conditionValue, envCond) = evaluate (condition, env)
+        (env', out')              = executeStatements (stmts, envCond, out)
 
 -- Takes a variable declaration statement, and an environment.
 -- Adds the variable from the declration to the environment.
@@ -170,8 +190,8 @@ evaluate (Binary left opr right, env)
     | tt == BANG_EQUAL    = (toVal (leftVal /= rightVal), newEnv)
     | tt == EQUAL_EQUAL   = (toVal (leftVal == rightVal), newEnv)
     where
-        tt       = getTokenType opr
-        (leftVal, leftEnv)  = evaluate (left, env)
+        tt                 = getTokenType opr
+        (leftVal, leftEnv) = evaluate (left, env)
         (rightVal, newEnv) = evaluate (right, leftEnv)
     
 -- TODO: Call get with literal instead of str.
@@ -198,9 +218,8 @@ isTruthy FalseVal = False
 isTruthy _        = True
 
 toVal :: Bool -> Value
-toVal bool 
-    | bool      = TrueVal
-    | otherwise = FalseVal
+toVal True = TrueVal 
+toVal False = FalseVal
 
 toValFromLit :: Literal -> Value
 toValFromLit TRUE_LIT  = TrueVal
