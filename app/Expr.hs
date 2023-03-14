@@ -1,11 +1,15 @@
+{-
+    TODO:
+    * Replace record syntax with normal syntax.
+-}
 module Expr where
-
 import Tokens
-
+import Data.List (intercalate)
 
 data Expr = Literal {getLiteral :: Token }
           | Unary {getUnaryOpr :: Token, getUnaryExpr :: Expr }
           | Binary { getBinaryLeft :: Expr, getBinaryOpr :: Token, getBinaryRight :: Expr }
+          | Call {getCallee :: Expr, getParen :: Token, getArgs :: [Expr]}
           | Grouping { getGrpExpr :: Expr }
           | Variable {getVar :: Token }
           | Assign {getVarAssign :: Token, getAssignExpr :: Expr }
@@ -27,6 +31,7 @@ instance Show Expr where
     show (Grouping expr)     = "(" ++ show expr ++ ")"
     show (Assign token expr) = getTokenStr token ++ "=" ++ show expr
     show (Variable token)    = getTokenStr token
+    show (Call callee _ args) = show callee ++ "(" ++ intercalate "," (map show args)  ++ ")"
 
 isVariable :: Expr -> Bool
 isVariable (Variable _) = True

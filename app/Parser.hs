@@ -9,10 +9,15 @@
 module Parser (parse, Stmt, Expr) where
 import Tokens
 import Expr
+    ( Expr(Assign, Unary, Grouping, Literal, Variable, Binary, Call),
+      isVariable,
+      getTokenType,
+      getTokenLine,
+      getTokenStr )
 import Stmt
-import Data.Typeable ( typeOf )
 import Prelude hiding (and, or)
 import Data.Maybe (isJust, fromJust)
+import Debug.Trace (traceShow)
 
 -- Program is an alias for a list of statements.
 newtype Program = Program [Stmt]
@@ -195,7 +200,6 @@ assignment tokens
     | otherwise          = (expr, rest)
     where
         (expr, rest)       = or tokens
-        equals             = head rest
         -- tail rest consumes the EQUAL token.
         (value, valueRest) = assignment (tail rest)
 
@@ -235,12 +239,58 @@ unary :: [Token] -> (Expr, [Token])
 unary tokens
     | match tokens [BANG, MINUS] = (Unary operator right, rightRest)
     -- Take out the consumed primary token from the tokens list.
-    | otherwise = primary tokens
+    | otherwise = call tokens
     where
         operator           = head tokens
         (right, rightRest) = if isAtEnd $ tail tokens
                              then loxError "Missing right side of unary expression" operator
                              else unary $ tail tokens
+
+call :: [Token] -> (Expr, [Token])
+call tokens
+    -- When an identifier is followed by LEFT_PAREN, then it's a call.
+    -- Use the identifier as leftExpr in calls.
+    | match restExpr [LEFT_PAREN] = calls restExpr expr
+    -- Case where it wasn't a call, parse expression as primary.
+    | otherwise                   = (expr, restExpr)
+    where
+        (expr, restExpr) = primary tokens
+        calls :: [Token] -> Expr -> (Expr, [Token])
+        calls tokens' leftExpr
+            -- Recursivley call itself until no more LEFT_PAREN is found.
+            -- Use the current call expresssion generated as new leftExpr in next call.
+            | match tokens' [LEFT_PAREN] = calls callRest callExpr
+            -- Case where there are no more LEFT_PAREN.
+            -- leftExpr has accumulated all subsequent calls eg. (identifier()()())
+            -- DON'T consume last semicolon, function expressionStatement expects it after an expresion.
+            | otherwise                 = (leftExpr, tokens')
+            where
+                -- Parse a single call.
+                -- Consume LEFT_PAREN, (tail tokens')
+                (callExpr, callRest) = finishCall (tail tokens') leftExpr
+
+finishCall :: [Token] -> Expr -> (Expr, [Token])
+finishCall tokens callee
+    -- Consume closing RIGHT_PAREN with tail rest.
+    | match rest [RIGHT_PAREN] = (Call callee (head rest) args, tail rest)
+    | otherwise = loxError "Expected ')' after arguments" (head rest)
+    where
+        (args, rest) = getArgs tokens []
+
+getArgs :: [Token] -> [Expr] -> ([Expr], [Token])
+getArgs tokens args
+    -- When RIGHT_PAREN is found, stop parsing arguments, last case.
+    | match tokens [RIGHT_PAREN] = (reverse args, tokens)
+    -- Case where there is no leading COMMA, first case.
+    | null args = getArgs rest' (expr':args)
+    | match tokens [COMMA] = getArgs rest (expr:args)
+    -- TODO: Returning now but should be a syntax error!
+    | otherwise = (reverse args, tokens)
+    where
+        -- Consume COMMA
+        (expr, rest)   = expression $ tail tokens
+        -- First case where there is no leading comma.
+        (expr', rest') = expression tokens
 
 primary :: [Token] -> (Expr, [Token])
 primary tokens
