@@ -40,9 +40,24 @@ program tokens
 
 declaration :: [Token] -> (Stmt, [Token])
 declaration tokens
+    -- Consume FUN token.
+    | match tokens [FUN] = functionDeclaration $ tail tokens
     -- Consume VAR token.
     | match tokens [VAR] = variableDeclaration $ tail tokens
     | otherwise          = statement tokens
+
+functionDeclaration :: [Token] -> (Stmt, [Token])
+functionDeclaration tokens
+    | not $ match tokens [IDENTIFIER] = loxError "Expected identifier after fun keyword" (head tokens)
+    | not $ match (tail tokens) [LEFT_PAREN] = loxError "Expected '(' after function identifier" (head $ tail tokens)
+    | not $ match parameterRest [RIGHT_PAREN] = loxError "Expected ')' after function parameters" (head parameterRest)
+    | not $ match (tail parameterRest) [LEFT_BRACE] = loxError "Expected function definition after function declaration" (head parameterRest)
+    | otherwise = (FunDeclStmt identifier params block, bodyRest)
+    where
+        identifier = head tokens
+        (params, parameterRest) = getArgs (tail $ tail tokens) [] getHead
+        (stmts, bodyRest) = blockStatement (tail $ tail parameterRest)
+        block = BlockStmt stmts
 
 variableDeclaration :: [Token] -> (Stmt, [Token])
 variableDeclaration tokens
@@ -275,22 +290,22 @@ finishCall tokens callee
     | match rest [RIGHT_PAREN] = (Call callee (head rest) args, tail rest)
     | otherwise = loxError "Expected ')' after arguments" (head rest)
     where
-        (args, rest) = getArgs tokens []
+        (args, rest) = getArgs tokens [] expression
 
-getArgs :: [Token] -> [Expr] -> ([Expr], [Token])
-getArgs tokens args
+getArgs :: [Token] -> [a] -> ([Token] -> (a, [Token])) -> ([a], [Token])
+getArgs tokens args func
     -- When RIGHT_PAREN is found, stop parsing arguments, last case.
     | match tokens [RIGHT_PAREN] = (reverse args, tokens)
     -- Case where there is no leading COMMA, first case.
-    | null args = getArgs rest' (expr':args)
-    | match tokens [COMMA] = getArgs rest (expr:args)
+    | null args = getArgs rest' (expr':args) func
+    | match tokens [COMMA] = getArgs rest (expr:args) func
     -- TODO: Returning now but should be a syntax error!
     | otherwise = (reverse args, tokens)
     where
         -- Consume COMMA
-        (expr, rest)   = expression $ tail tokens
+        (expr, rest)   = func $ tail tokens
         -- First case where there is no leading comma.
-        (expr', rest') = expression tokens
+        (expr', rest') = func tokens
 
 primary :: [Token] -> (Expr, [Token])
 primary tokens
@@ -337,6 +352,9 @@ match tokens = any (check tokens)
 -- is the same as the given TokenType.
 check :: [Token] -> TokenType -> Bool
 check tokens tokenType = getTokenType (head tokens) == tokenType
+
+getHead :: [Token] -> (Token, [Token])
+getHead tokens = (head tokens, tail tokens)
 
 -- If the first token in given list is of type EOF
 -- return True, else False.
