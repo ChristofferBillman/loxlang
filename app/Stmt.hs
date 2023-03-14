@@ -8,14 +8,14 @@ import Expr
 import Data.Maybe (fromJust)
 import Data.List (intercalate)
 
-data Stmt = ExprStmt {getExpr :: Expr }
-          | PrintStmt {getPrintExpr :: Expr }
-          | ReturnStmt {getKeyword :: Token, getReturnValue :: Expr}
-          | VarDeclStmt {getVarToken :: Token, getInitializer :: Maybe Expr }
-          | FunDeclStmt {getFunName :: Token, getFunParams :: [Token], getFunBody :: Stmt}
-          | BlockStmt {getBlockStmts :: [Stmt]}
-          | IfStmt {getIfCondition :: Expr, getThenBranch :: Stmt, getElseBranch ::  Maybe Stmt }
-          | WhileStmt {getWhileCondition :: Expr, getWhileBody :: Stmt}
+data Stmt = ExprStmt    Expr
+          | PrintStmt   Expr
+          | ReturnStmt  Token Expr
+          | VarDeclStmt Token (Maybe Expr)
+          | FunDeclStmt Token [Token] Stmt
+          | BlockStmt   [Stmt]
+          | IfStmt      Expr Stmt (Maybe Stmt)
+          | WhileStmt   Expr Stmt
 
 instance Show Stmt where
     show (ExprStmt expr) = show expr ++ ";"

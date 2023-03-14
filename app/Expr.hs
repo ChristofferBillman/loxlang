@@ -1,18 +1,14 @@
-{-
-    TODO:
-    * Replace record syntax with normal syntax.
--}
 module Expr where
 import Tokens
 import Data.List (intercalate)
 
-data Expr = Literal {getLiteral :: Token }
-          | Unary {getUnaryOpr :: Token, getUnaryExpr :: Expr }
-          | Binary { getBinaryLeft :: Expr, getBinaryOpr :: Token, getBinaryRight :: Expr }
-          | Call {getCallee :: Expr, getParen :: Token, getArgs :: [Expr]}
-          | Grouping { getGrpExpr :: Expr }
-          | Variable {getVar :: Token }
-          | Assign {getVarAssign :: Token, getAssignExpr :: Expr }
+data Expr = Literal  Token
+          | Unary    Token Expr
+          | Binary   Expr Token Expr
+          | Call     Expr Token [Expr]
+          | Grouping Expr
+          | Variable Token
+          | Assign   Token Expr
 
 instance Show Expr where
     show (Literal token)
