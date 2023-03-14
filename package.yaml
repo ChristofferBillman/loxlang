@@ -50,7 +50,7 @@ executables:
 tests:
   loxlang-test:
     main:                Spec.hs
-    source-dirs:         test
+    source-dirs:         test, app
     ghc-options:
     - -threaded
     - -rtsopts

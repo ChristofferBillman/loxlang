@@ -1,0 +1,14 @@
+var a = "global a";
+var b = "global b";
+var c = "global c";
+
+{
+  print a;
+  {
+    var a = "inner a";
+    print a;
+    a = "modified a";
+  }
+  a = "modified a";
+}
+print a;

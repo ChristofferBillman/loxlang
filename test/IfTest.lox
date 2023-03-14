@@ -1,0 +1,14 @@
+if(true){
+    print "a";
+}
+
+if(false) {
+    print "b";
+}
+
+if(false) {
+    print "c";
+}
+else {
+    print "d";
+}
