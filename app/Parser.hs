@@ -71,7 +71,7 @@ variableDeclaration tokens
     -- If none of the above, we assert that a semicolon is expected.
     | otherwise = loxError "Expected ';' after variable declaration" (head tokens)
     where
-        (initializer, rest) 
+        (initializer, rest)
             | isAtEnd (tail $ tail tokens) = loxError "Expected expression after '=' in variable declaration" (head tokens)
             | otherwise = expression $ tail $ tail tokens
         (_, checkedRest) = if match rest [SEMICOLON]
@@ -87,12 +87,25 @@ statement tokens
     | match tokens [FOR]        = forStatement tokens
     | match tokens [IF]         = ifStatement tokens
     | match tokens [PRINT]      = printStatement tokens
+    | match tokens [RETURN]     = returnStatement tokens
     | match tokens [WHILE]      = whileStatement tokens
     -- Consume the left brace token with tail tokens.
     | match tokens [LEFT_BRACE] = (BlockStmt block, rest)
     | otherwise                 = expressionStatement tokens
     where
         (block, rest) = blockStatement $ tail tokens
+
+returnStatement :: [Token] -> (Stmt, [Token])
+returnStatement tokens
+    -- Consume RETURN
+    -- No expression after return, return nil.
+    | match (tail tokens) [SEMICOLON] = (ReturnStmt keyword $ Literal nilToken, tail $ tail tokens)
+    -- Consume last semicolon.
+    | otherwise = (ReturnStmt keyword expr, tail rest)
+    where
+        (expr, rest) = expression (tail tokens)
+        keyword = head tokens
+        nilToken = TOKEN NIL "nil" NIL_LIT 0
 
 ifStatement :: [Token] -> (Stmt, [Token])
 ifStatement tokens

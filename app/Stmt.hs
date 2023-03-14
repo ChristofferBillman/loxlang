@@ -10,6 +10,7 @@ import Data.List (intercalate)
 
 data Stmt = ExprStmt {getExpr :: Expr }
           | PrintStmt {getPrintExpr :: Expr }
+          | ReturnStmt {getKeyword :: Token, getReturnValue :: Expr}
           | VarDeclStmt {getVarToken :: Token, getInitializer :: Maybe Expr }
           | FunDeclStmt {getFunName :: Token, getFunParams :: [Token], getFunBody :: Stmt}
           | BlockStmt {getBlockStmts :: [Stmt]}
@@ -19,6 +20,8 @@ data Stmt = ExprStmt {getExpr :: Expr }
 instance Show Stmt where
     show (ExprStmt expr) = show expr ++ ";"
     show (PrintStmt val) = "print " ++ show val ++ ";"
+    show (ReturnStmt keyword (Literal (TOKEN _ _ NIL_LIT _))) = "return;"
+    show (ReturnStmt keyword value) = "return " ++ show value ++ ";"
     show (VarDeclStmt token Nothing) = "V DEC -> " ++ getTokenStr token ++ ";"
     show (VarDeclStmt token init) = "V DEC -> " ++ getTokenStr token ++ "=" ++ show (fromJust init) ++ ";"
     show (FunDeclStmt (TOKEN _ _ (ID name) _) params block) = "F DEC -> " ++ name ++ "(" ++ intercalate "," (map getTokenStr params) ++ ")" ++ show block 
