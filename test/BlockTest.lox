@@ -1,0 +1,16 @@
+// Empty block
+{}
+
+// Normal block
+{
+    print "hello";
+}
+
+var hello = 10;
+{
+    print hello;
+    hello = 20;
+    print hello;
+}
+
+print hello;

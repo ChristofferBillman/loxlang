@@ -1,0 +1,8 @@
+// Expect true
+print true and true;
+
+// Expect true
+print false or true;
+
+// Expect false
+print false or false;
