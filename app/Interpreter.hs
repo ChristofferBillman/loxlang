@@ -9,6 +9,12 @@
     * Report what line an error occured on.
     * Maybe functions
 -}
+
+{-
+    Changes version 2023-05-02:
+    * Added support for 'and' and 'or' expressions.
+    * Fixed bug where empty block statements would cause a lox runtime error.
+-}
 module Interpreter (interpret) where
 
 import Expr
@@ -77,7 +83,7 @@ interpret program = reverse $ snd $ executeStatements (program, Environment [] N
 -- Recursivley 'loops' through a list of statements.
 executeStatements :: ([Stmt], Environment, [String]) -> (Environment, [String])
 executeStatements (stmt:rest, env, out) 
-    | null rest = (env', out')
+    | null rest        = (env', out')
     | otherwise        = executeStatements (rest, env', out')
     where
         (env', out')   = execute (stmt, env, out)
@@ -94,6 +100,7 @@ execute (PrintStmt expr, env, out) = (newEnv, show value : out)
         (value, newEnv) = evaluate (expr, env)
 
 execute (stmt@(VarDeclStmt{}), env, out) = (define (stmt, env), out)
+execute (BlockStmt [], env, out)         = (env, out)
 execute (BlockStmt stmts, env, out)      = block (stmts, env, out)
 execute (stmt@(IfStmt{}), env, out)      = ifStatement (stmt, env, out)
 execute (stmt@(WhileStmt{}), env, out)   = whileStatement (stmt, env, out)
@@ -189,6 +196,10 @@ evaluate (Binary left opr right, env)
     | tt == LESS_EQUAL    = (toVal (leftVal <= rightVal), newEnv)
     | tt == BANG_EQUAL    = (toVal (leftVal /= rightVal), newEnv)
     | tt == EQUAL_EQUAL   = (toVal (leftVal == rightVal), newEnv)
+    | tt == AND           = (toVal ((isTruthy leftVal) == (isTruthy rightVal)), newEnv)
+    | tt == OR            = if (isTruthy leftVal)
+                            then (TrueVal, leftEnv)
+                            else (toVal (isTruthy rightVal), newEnv)
     where
         tt                 = getTokenType opr
         (leftVal, leftEnv) = evaluate (left, env)
