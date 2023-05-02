@@ -10,6 +10,8 @@ main = do
     expectFromSrc ["a", "d"]                            "IfTest"
     expectFromSrc ["global a", "inner a", "modified a"] "EnvironmentTest"
     expectFromSrc ["150.0", "false"]                    "ExprTest"
+    expectFromSrc ["true", "true", "false"]             "AndTest"
+    expectFromSrc ["hello", "10.0", "20.0", "20.0"]     "BlockTest"
 
 expect :: [String] -> [String] -> String -> IO ()
 expect a b testName
