@@ -1,0 +1,11 @@
+if(true) print(true);
+if(false) print(false);
+
+if("A string") print(true);
+if(45) print(true);
+
+if("hejsan" and "hejsan" or "false") print("yo");
+
+print "hi" or 2; // "hi".
+print nil or "yes"; // "yes".
+print nil and "yes";

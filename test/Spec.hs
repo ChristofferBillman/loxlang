@@ -12,6 +12,7 @@ main = do
     expectFromSrc ["150.0", "false"]                    "ExprTest"
     expectFromSrc ["true", "true", "false"]             "AndTest"
     expectFromSrc ["hello", "10.0", "20.0", "20.0"]     "BlockTest"
+    expectFromSrc ["true", "true", "true", "yo", "hi", "yes","yes"]     "TruthinessTest"
 
 expect :: [String] -> [String] -> String -> IO ()
 expect a b testName
