@@ -21,23 +21,19 @@ import Expr
 import Stmt
 import Tokens
 import Data.Maybe
-import Debug.Trace
 
 data Environment = Environment [(String,Value)] (Maybe Environment) deriving (Show)
-
-data Value = StrVal {getStrVal :: String}
-          | NumVal  {getNumVal :: Float}
+data Value = StrVal String
+          | NumVal Float
           | NilVal
           | TrueVal
           | FalseVal
-
 instance Show Value where
     show (StrVal str) = str
     show (NumVal num) = show num
     show NilVal     = "nil"
     show TrueVal     = "true"
     show FalseVal     = "false"
-          
 instance Num Value where
   (+) (NumVal n1) (NumVal n2) = NumVal (n1+n2)
   (+) (StrVal s1) (StrVal s2) = StrVal (s1++s2)
@@ -196,10 +192,12 @@ evaluate (Binary left opr right, env)
     | tt == LESS_EQUAL    = (toVal (leftVal <= rightVal), newEnv)
     | tt == BANG_EQUAL    = (toVal (leftVal /= rightVal), newEnv)
     | tt == EQUAL_EQUAL   = (toVal (leftVal == rightVal), newEnv)
-    | tt == AND           = (toVal ((isTruthy leftVal) == (isTruthy rightVal)), newEnv)
-    | tt == OR            = if (isTruthy leftVal)
-                            then (TrueVal, leftEnv)
-                            else (toVal (isTruthy rightVal), newEnv)
+    | tt == AND           = if isTruthy leftVal == isTruthy rightVal
+                            then (leftVal, leftEnv)
+                            else (rightVal, newEnv)
+    | tt == OR            = if isTruthy leftVal
+                            then (leftVal, leftEnv)
+                            else (rightVal, newEnv)
     where
         tt                 = getTokenType opr
         (leftVal, leftEnv) = evaluate (left, env)
